@@ -1835,6 +1835,7 @@ class GenerationMixin:
         output_scores: Optional[bool] = None,
         return_dict_in_generate: Optional[bool] = None,
         synced_gpus: Optional[bool] = False,
+        cum_vocabs: Optional[list] = None,
         **model_kwargs,
     ) -> Union[SampleOutput, torch.LongTensor]:
         r"""
@@ -2005,6 +2006,12 @@ class GenerationMixin:
                 continue  # don't waste resources running the code we don't need
 
             next_token_logits = outputs.logits[:, -1, :]
+
+            # mask out stuff that shouldn't be output
+            if cum_vocabs is not None:
+                start, end = cum_vocabs[cur_len], cum_vocabs[cur_len + 1]
+                next_token_logits[:, :start] = -float("inf")
+                next_token_logits[:, end:] = -float("inf")
 
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
